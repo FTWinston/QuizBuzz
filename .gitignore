@@ -1,0 +1,9 @@
+Debug/*
+ipch/*
+Mongoose/Debug/*
+Mongoose/Release/*
+QuizBuzz/bin/*
+QuizBuzz/obj/*
+*.suo
+*.sdf
+*.opensdf
