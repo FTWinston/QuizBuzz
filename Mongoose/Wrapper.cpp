@@ -83,6 +83,7 @@ int WebServer::HandleEvent(mg_connection *conn, enum mg_event ev)
 	{
 		auto connection = new WebSocketConnection(nextConnectionID++, conn);
 		conn->connection_param = connection;
+		connections->insert(std::make_pair(connection->connectionNumber, connection));
 		WebSocketConnected(connection->connectionNumber);
 		return MG_FALSE;
 	}
@@ -90,6 +91,7 @@ int WebServer::HandleEvent(mg_connection *conn, enum mg_event ev)
 		if (conn->is_websocket)
 		{
 			auto connection = (WebSocketConnection*)conn->connection_param;
+			connections->erase(connection->connectionNumber);
 			WebSocketDisconnected(connection->connectionNumber);
 			delete connection;
 		}
@@ -99,13 +101,15 @@ int WebServer::HandleEvent(mg_connection *conn, enum mg_event ev)
 	}
 }
 
-void WebServer::SendWebSocketMessage(int recipient, String ^message)
+bool WebServer::SendWebSocketMessage(int recipient, String ^message)
 {
 	auto it = connections->find(recipient);
 	if (it != connections->end())
 	{
 		mg_websocket_printf(it->second->connection, WEBSOCKET_OPCODE_TEXT, MakeCString(message));
+		return true;
 	}
+	return false;
 }
 
 String ^WebServer::GetUrl()

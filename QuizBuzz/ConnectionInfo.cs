@@ -8,6 +8,7 @@ namespace QuizBuzz
 {
     class ConnectionInfo
     {
+        public ConnectionInfo(string sound) { SoundName = sound; }
         public string Name { get; set; }
         public string SoundName { get; set; }
     }

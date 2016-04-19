@@ -1,0 +1,75 @@
+<html>
+<head>
+<title>Quiz Buzz</title>
+<style>
+body {
+	margin: 0;
+	padding: 0;
+	color: white;
+	background-color: black;
+	text-align: center;
+	vertical-align: middle;
+}
+body > div {
+	position: fixed;
+	top: 0; left: 0; bottom: 0; right: 0;
+	font-size: larger;
+}
+</style>
+</head>
+<body>
+	<div id="ready" style="display:none;">
+		Tap the screen to buzz
+	</div>
+	<div id="win" style="display:none; background-color: #00cc00;">
+		You buzzed first. Speak!
+	</div>
+	<div id="lose" style="display:none; background-color: #cc0000;">
+		Too slow! Buzz faster next time.
+	</div>
+	<div id="gone" style="display:none;">
+		The connection has been lost. The program was probably turned off.
+	</div>
+	<div id="error" style="display:none; background-color: #cc0000;">
+		Something went horribly wrong. Sorry!
+	</div>
+	
+	<script>
+		var name = prompt("Please enter your name", "");
+		
+		var socket = new WebSocket('ws://' + location.host + '/ws');
+		socket.onopen = function(e) { socket.send('name ' + name); show(0); }
+		socket.onclose = function(e) { show(3); };
+		socket.onerror = function(e) { show(4); socket.close(); };
+		socket.onmessage = function (ev) {
+			var msg = (ev.data || '');
+			console.log('received: ' + msg);
+			if (msg == 'ready') {
+				show(0);
+			}
+			else if (msg == 'win') {
+				show(1);
+			}
+			else if (msg == 'lose') {
+				show(2);
+			}
+		};
+		
+		function show(num) {
+			document.getElementById('ready').style.display = num == 0 ? '' : 'none';
+			document.getElementById('win').style.display = num == 1 ? '' : 'none';
+			document.getElementById('lose').style.display = num == 2 ? '' : 'none';
+			document.getElementById('gone').style.display = num == 3 ? '' : 'none';
+			document.getElementById('error').style.display = num == 4 ? '' : 'none';
+		}
+		
+		document.getElementById('ready').addEventListener('mousedown', function() {
+			socket.send('buzz');
+		});
+
+		document.getElementById('ready').addEventListener('touchstart', function () {
+		    socket.send('buzz');
+		});
+	</script>
+</body>
+</html>

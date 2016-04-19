@@ -39,7 +39,7 @@ public:
 	delegate void MessageDelegate(int, String ^);
 	event MessageDelegate ^WebSocketMessageReceived;
 
-	void SendWebSocketMessage(int connection, String ^message);
+	bool SendWebSocketMessage(int connection, String ^message);
 	String ^GetUrl();
 private:
 	void Poll();

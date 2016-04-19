@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using Delay = System.Tuple<string, int>;
 
 namespace QuizBuzz
 {
@@ -18,6 +20,14 @@ namespace QuizBuzz
 
         WebServer server;
         SortedList<int, ConnectionInfo> connections;
+        WMPLib.WindowsMediaPlayer wplayer;
+        string defaultSound;
+
+#if DEBUG
+        readonly string soundDir = new FileInfo(Application.ExecutablePath).Directory + "/../../sounds";
+#else
+        readonly string soundDir = new FileInfo(Application.ExecutablePath).Directory + "/sounds";
+#endif
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -28,13 +38,18 @@ namespace QuizBuzz
             colSound.DataSource = GetSounds();
             canBuzzIn = true;
 
-            connections.Add(1, new ConnectionInfo() { Name = "blah" });
-            connections.Add(2, new ConnectionInfo() { Name = "blah2" });
+            wplayer = new WMPLib.WindowsMediaPlayer();
+
+            ddlBuzzDelay.Items.Add(new Delay("1 second", 1000));
+            ddlBuzzDelay.Items.Add(new Delay("3 seconds", 3000));
+            ddlBuzzDelay.Items.Add(new Delay("5 seconds", 5000));
+            ddlBuzzDelay.Items.Add(new Delay("7 seconds", 5000));
+            ddlBuzzDelay.Items.Add(new Delay("10 seconds", 10000));
+            ddlBuzzDelay.Items.Add(new Delay("indefinite (manual)", 0));
+            ddlBuzzDelay.SelectedIndex = 2;
 
             gridBuzzers.AutoGenerateColumns = false;
-            var bindingSource = new BindingSource();
-            bindingSource.DataSource = connections.Values;
-            gridBuzzers.DataSource = bindingSource;
+            ShowConnections();
         }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
@@ -46,9 +61,9 @@ namespace QuizBuzz
         {
             server = new WebServer();
 #if DEBUG
-            server.SetOption("document_root", "../../../WebRoot");
+            server.SetOption("document_root", "../..");
 #else
-            server.SetOption("document_root", "WebRoot");
+            server.SetOption("document_root", ".");
 #endif
             if (!string.IsNullOrEmpty(server.SetOption("listening_port", "80"))
              && !string.IsNullOrEmpty(server.SetOption("listening_port", "8080")))
@@ -59,16 +74,32 @@ namespace QuizBuzz
             server.WebSocketMessageReceived += server_WebSocketMessageReceived;
         }
 
+        delegate void EmptyDelegate();
+        private void ShowConnections()
+        {
+            if (gridBuzzers.InvokeRequired)
+            {
+                gridBuzzers.Invoke(new EmptyDelegate(ShowConnections));
+                return;
+            }
+
+            var bindingSource = new BindingSource();
+            bindingSource.DataSource = connections.Values;
+            gridBuzzers.DataSource = bindingSource;
+        }
+
         void server_WebSocketConnected(int id)
         {
             Console.WriteLine("{0} Connected", id);
-            connections.Add(id, new ConnectionInfo());
+            connections.Add(id, new ConnectionInfo(defaultSound));
+            ShowConnections();
         }
 
         void server_WebSocketDisconnected(int id)
         {
             Console.WriteLine("{0} Disconnected", id);
             connections.Remove(id);
+            ShowConnections();
         }
 
         bool canBuzzIn;
@@ -83,11 +114,35 @@ namespace QuizBuzz
             else if (message == "buzz" && canBuzzIn)
             {
                 canBuzzIn = false;
-                foreach (var conn in connections)
-                    server.SendWebSocketMessage(conn.Key, conn.Key == id ? "win" : "lose");
+                HandleBuzz(id);
+            }
+        }
 
+        delegate void buzzDelegate(int id);
+
+        private void HandleBuzz(int id)
+        {
+            if (ddlBuzzDelay.InvokeRequired)
+            {
+                ddlBuzzDelay.Invoke(new buzzDelegate(HandleBuzz), id);
+                return;
+            }
+
+            foreach (var conn in connections)
+                server.SendWebSocketMessage(conn.Key, conn.Key == id ? "win" : "lose");
+
+            // actually play sound
+            var path = soundDir + "/" + connections[id].SoundName;
+            wplayer.URL = new FileInfo(path).FullName;
+            wplayer.controls.play();
+            
+            lnkAllowBuzzing.Visible = true; // always allow resetting early
+
+            var delay = (ddlBuzzDelay.SelectedItem as Delay).Item2;
+            if (delay > 0)
+            {
                 var timer = new Timer();
-                timer.Interval = 5000; // TODO: add a "quick" mode or other way of having this reduced, for introductory purposes. Also have a "manual" mode, with a button to re-allow.
+                timer.Interval = delay;
                 timer.Tick += (o, e) =>
                 {
                     AllowBuzzIn();
@@ -102,6 +157,7 @@ namespace QuizBuzz
             foreach (var conn in connections)
                 server.SendWebSocketMessage(conn.Key, "ready");
             canBuzzIn = true;
+            lnkAllowBuzzing.Visible = false;
         }
 
         private void DisplayUrl()
@@ -112,10 +168,19 @@ namespace QuizBuzz
         private IList<string> GetSounds()
         {
             var sounds = new List<string>();
-            sounds.Add("Sound 1");
-            sounds.Add("Sound 2");
-            sounds.Add("Sound 3");
+            DirectoryInfo di = new DirectoryInfo(soundDir);
+            var files = di.GetFiles();
+
+            foreach (var file in files)
+                sounds.Add(file.Name);
+
+            defaultSound = sounds.First();
             return sounds;
+        }
+
+        private void lnkAllowBuzzing_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            AllowBuzzIn();
         }
     }
 }
