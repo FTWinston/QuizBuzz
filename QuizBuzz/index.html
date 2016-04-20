@@ -16,10 +16,17 @@ body > div {
 	font-size: larger;
 }
 </style>
+<script type="text/javascript" src="NoSleep.min.js"></script>
 </head>
 <body>
+    <div id="prompt">
+        Tap to go full screen.
+    </div>
+    <div id="wait" style="display:none;">
+        Please wait...
+    </div>
 	<div id="ready" style="display:none;">
-		Tap the screen to buzz
+		Tap the screen to buzz.
 	</div>
 	<div id="win" style="display:none; background-color: #00cc00;">
 		You buzzed first. Speak!
@@ -38,38 +45,73 @@ body > div {
 		var name = prompt("Please enter your name", "");
 		
 		var socket = new WebSocket('ws://' + location.host + '/ws');
-		socket.onopen = function(e) { socket.send('name ' + name); show(0); }
-		socket.onclose = function(e) { show(3); };
-		socket.onerror = function(e) { show(4); socket.close(); };
+		socket.onopen = function (e) {
+		    socket.send('name ' + name);
+		    noSleep.enable();
+		};
+		socket.onclose = function (e) {
+		    show(4);
+		    noSleep.disable();
+		};
+		socket.onerror = function(e) { show(5); socket.close(); };
 		socket.onmessage = function (ev) {
 			var msg = (ev.data || '');
-			console.log('received: ' + msg);
 			if (msg == 'ready') {
-				show(0);
-			}
-			else if (msg == 'win') {
 				show(1);
 			}
-			else if (msg == 'lose') {
+			else if (msg == 'win') {
 				show(2);
+			}
+			else if (msg == 'lose') {
+				show(3);
 			}
 		};
 		
-		function show(num) {
-			document.getElementById('ready').style.display = num == 0 ? '' : 'none';
-			document.getElementById('win').style.display = num == 1 ? '' : 'none';
-			document.getElementById('lose').style.display = num == 2 ? '' : 'none';
-			document.getElementById('gone').style.display = num == 3 ? '' : 'none';
-			document.getElementById('error').style.display = num == 4 ? '' : 'none';
-		}
-		
+		document.getElementById('prompt').addEventListener('mousedown', function () {
+		    goFullscreen();
+		    return false;
+		});
+
+		document.getElementById('prompt').addEventListener('touchstart', function () {
+		    goFullscreen();
+		    return false;
+		});
+
 		document.getElementById('ready').addEventListener('mousedown', function() {
-			socket.send('buzz');
+		    socket.send('buzz');
+		    return false;
 		});
 
 		document.getElementById('ready').addEventListener('touchstart', function () {
 		    socket.send('buzz');
+		    return false;
 		});
+
+		var noSleep = new NoSleep();
+		function goFullscreen() {
+		    var elem = document.body;
+		    if (elem.requestFullscreen)
+		        elem.requestFullscreen();
+		    else if (elem.msRequestFullscreen)
+		        elem.msRequestFullscreen();
+		    else if (elem.mozRequestFullScreen)
+		        elem.mozRequestFullScreen();
+		    else if (elem.webkitRequestFullscreen)
+		        elem.webkitRequestFullscreen();
+
+		    show(0);
+		    window.setTimeout(function () { show(1); }, 5000);
+		}
+
+		function show(num) {
+		    document.getElementById('prompt').style.display = 'none';
+		    document.getElementById('wait').style.display = num == 0 ? '' : 'none';
+		    document.getElementById('ready').style.display = num == 1 ? '' : 'none';
+		    document.getElementById('win').style.display = num == 2 ? '' : 'none';
+		    document.getElementById('lose').style.display = num == 3 ? '' : 'none';
+		    document.getElementById('gone').style.display = num == 4 ? '' : 'none';
+		    document.getElementById('error').style.display = num == 5 ? '' : 'none';
+		}
 	</script>
 </body>
 </html>

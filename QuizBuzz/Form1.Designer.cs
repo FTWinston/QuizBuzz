@@ -71,7 +71,9 @@
             this.gridBuzzers.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.colName,
             this.colSound});
+            this.gridBuzzers.EditMode = System.Windows.Forms.DataGridViewEditMode.EditOnEnter;
             this.gridBuzzers.Location = new System.Drawing.Point(16, 86);
+            this.gridBuzzers.MultiSelect = false;
             this.gridBuzzers.Name = "gridBuzzers";
             this.gridBuzzers.RowHeadersVisible = false;
             this.gridBuzzers.RowTemplate.Height = 28;
@@ -119,6 +121,7 @@
             // colSound
             // 
             this.colSound.DataPropertyName = "SoundName";
+            this.colSound.DisplayStyle = System.Windows.Forms.DataGridViewComboBoxDisplayStyle.ComboBox;
             this.colSound.HeaderText = "Buzzer Sound";
             this.colSound.Name = "colSound";
             this.colSound.Resizable = System.Windows.Forms.DataGridViewTriState.True;
